@@ -28,6 +28,10 @@ if [[ ! -d .venv ]]; then
 fi
 PYTHON=".venv/bin/python"
 
+# Ensure dependencies and pre-commit hook are installed (idempotent)
+"$PYTHON" -m pip install -q -r requirements.txt
+"$PYTHON" -m pre_commit install
+
 # Build and run create_summary.py
 ARGS=()
 if [[ -n "$INPUT_FILE" ]]; then
