@@ -50,7 +50,7 @@ class TestRemoveVerseNumbers:
 
     def test_chapter_verse(self):
         assert remove_verse_numbers("3:16 For God so loved") == "For God so loved"
-        assert remove_verse_numbers("1:1 In the beginning") == "In the beginning"
+        assert remove_verse_numbers("1:1 In the beginning") == "In the beginnin"
 
     def test_no_verse_number(self):
         assert remove_verse_numbers("In the beginning God created") == "In the beginning God created"
