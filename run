@@ -9,13 +9,13 @@ cd "$(dirname "$0")"
 # Parameters (edit these, or override when running: INPUT_FILE=passage.txt ./run)
 # -----------------------------------------------------------------------------
 # Read passage from this file (leave empty to use TEXT or stdin).
-INPUT_FILE="${INPUT_FILE:-}"
+INPUT_FILE="${INPUT_FILE:-input/psalm_1.txt}"
 
 # Or pass text directly (leave empty if using INPUT_FILE or stdin).
 TEXT="${TEXT:-}"
 
 # Save summary to output/OUTPUT_NAME.txt (leave empty to only print).
-OUTPUT_NAME="${OUTPUT_NAME:-}"
+OUTPUT_NAME="${OUTPUT_NAME:-psalm_1}"
 
 # Set to "yes" to treat entire text as one line (single string of first letters).
 NO_STRUCTURE="${NO_STRUCTURE:-no}"
@@ -41,6 +41,14 @@ if [[ "$NO_STRUCTURE" = yes ]]; then
 fi
 if [[ -n "$TEXT" ]]; then
   ARGS+=("$TEXT")
+fi
+
+if [[ -z "$INPUT_FILE" && -z "$TEXT" ]]; then
+  echo "No input set. Either:"
+  echo "  1. Edit the run script and set INPUT_FILE= (e.g. input/psalm_1.txt) or TEXT="
+  echo "  2. Run with: INPUT_FILE=input/psalm_1.txt OUTPUT_NAME=psalm_1 ./run"
+  echo "  3. Pipe text: echo 'Your passage here' | ./run"
+  exit 1
 fi
 
 exec "$PYTHON" create_summary.py "${ARGS[@]}"

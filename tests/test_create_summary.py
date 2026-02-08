@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from create_summary import (
     first_letter_or_digraph,
     get_first_letters,
+    remove_references,
     remove_verse_numbers,
 )
 
@@ -58,6 +59,17 @@ class TestRemoveVerseNumbers:
         assert remove_verse_numbers("1. In the beginning") == "In the beginning"
 
 
+class TestRemoveReferences:
+    """Tests for remove_references."""
+
+    def test_reference_at_end(self):
+        assert remove_references("éjjel-nappal. Józs 1,8") == "éjjel-nappal."
+        assert remove_references("word. J 1, 8") == "word."
+
+    def test_reference_with_space(self):
+        assert remove_references("Minden sikerül. Jer 17,8") == "Minden sikerül."
+
+
 class TestGetFirstLetters:
     """Tests for get_first_letters."""
 
@@ -93,10 +105,10 @@ class TestGetFirstLetters:
         text = "1 First verse.\n2 Second verse."
         assert get_first_letters(text) == "F v.\nS v."
 
-    def test_empty_line_preserved(self):
+    def test_empty_lines_removed(self):
         text = "One line.\n\nAnother."
         result = get_first_letters(text)
-        assert result == "O l.\n\nA."
+        assert result == "O l.\nA."
 
     def test_remove_verses_false(self):
         text = "1 In the beginning"

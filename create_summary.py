@@ -17,6 +17,9 @@ HUNGARIAN_DIGRAPHS = ("cs", "gy", "ly", "ny", "sz", "ty", "zs")
 # Verse number at start of line: e.g. "1 ", "2 ", "3:16 ", "1. "
 VERSE_NUMBER_RE = re.compile(r"^\s*\d+(?::\d+)?[.\s]*", re.IGNORECASE)
 
+# Bible reference: book abbrev + chapter, verse e.g. "Józs 1,8", "Jer 17,8", "J 1, 8"
+REFERENCE_RE = re.compile(r"\s*[A-Za-zÀ-ÿ]+\s+\d+\s*,\s*\d+\.?\s*")
+
 
 def first_letter_or_digraph(word: str) -> str:
     """Return the first letter (or Hungarian digraph) of a word, preserving case."""
@@ -34,52 +37,68 @@ def remove_verse_numbers(line: str) -> str:
     return VERSE_NUMBER_RE.sub("", line).strip()
 
 
+def remove_references(line: str) -> str:
+    """Remove Bible references from a line (e.g. 'Józs 1,8', 'Jer 17,8', 'J 1, 8')."""
+    line = REFERENCE_RE.sub(" ", line)
+    return re.sub(r"\s+", " ", line).strip()
+
+
+# Split on . ! ? followed by whitespace (sentence boundaries)
+SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def _first_letters_for_line(line: str) -> str:
+    """Return the first-letter summary for a single line/sentence."""
+    tokens = re.findall(r"\w+(?:-\w+)*|[^\w\s]+", line)
+    parts = []
+    for token in tokens:
+        if re.match(r"^\w", token):
+            segments = token.split("-")
+            first_letters = [
+                first_letter_or_digraph(seg) for seg in segments if seg
+            ]
+            parts.append("-".join(first_letters))
+        else:
+            parts.append(token)
+    no_space_before = ".!?,"
+    out_parts = []
+    for i, p in enumerate(parts):
+        if i > 0 and p not in no_space_before:
+            out_parts.append(" ")
+        out_parts.append(p)
+    return "".join(out_parts)
+
+
 def get_first_letters(
     text: str,
     preserve_structure: bool = True,
     remove_verses: bool = True,
+    remove_refs: bool = True,
+    one_line_per_sentence: bool = True,
 ) -> str:
     """
     Extract the first letter (or Hungarian digraph) of each word.
-    Keeps hyphenation and punctuation. Optionally removes verse numbers from lines.
+    Keeps hyphenation and punctuation. Optionally removes verse numbers and references.
+    When one_line_per_sentence is True, output has one line per sentence (split on . ! ?).
     """
-    lines = text.strip().splitlines()
+    # Merge all lines into one string, then split into sentences
+    merged = re.sub(r"\s*\n\s*", " ", text.strip())
+    sentences = SENTENCE_SPLIT_RE.split(merged)
     result_lines = []
 
-    for line in lines:
-        line = line.strip()
-        if remove_verses:
-            line = remove_verse_numbers(line)
-        if not line:
-            result_lines.append("")
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
             continue
+        if remove_verses:
+            sentence = remove_verse_numbers(sentence)
+        if remove_refs:
+            sentence = remove_references(sentence)
+        if not sentence:
+            continue
+        result_lines.append(_first_letters_for_line(sentence))
 
-        # Tokenize: words (including hyphenated) and punctuation
-        tokens = re.findall(r"\w+(?:-\w+)*|[^\w\s]+", line)
-        parts = []
-
-        for token in tokens:
-            if re.match(r"^\w", token):
-                # Word token; may be hyphenated
-                segments = token.split("-")
-                first_letters = [
-                    first_letter_or_digraph(seg) for seg in segments if seg
-                ]
-                parts.append("-".join(first_letters))
-            else:
-                # Punctuation: keep as-is
-                parts.append(token)
-
-        # Join with spaces, but no space before punctuation (e.g. comma, period)
-        no_space_before = ".!?,"
-        out_parts = []
-        for i, p in enumerate(parts):
-            if i > 0 and p not in no_space_before:
-                out_parts.append(" ")
-            out_parts.append(p)
-        result_lines.append("".join(out_parts))
-
-    return "\n".join(result_lines)
+    return "\n".join(r for r in result_lines if r)
 
 
 def main() -> None:
