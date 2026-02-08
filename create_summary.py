@@ -16,6 +16,8 @@ HUNGARIAN_DIGRAPHS = ("cs", "gy", "ly", "ny", "sz", "ty", "zs")
 
 # Verse number at start of line: e.g. "1 ", "2 ", "3:16 ", "1. "
 VERSE_NUMBER_RE = re.compile(r"^\s*\d+(?::\d+)?[.\s]*", re.IGNORECASE)
+# Verse number after comma or period (e.g. ", 2 ", ". 3 ") when verses are merged
+VERSE_NUMBER_MID_RE = re.compile(r"([.,])\s*\d+(?::\d+)?[.\s]*", re.IGNORECASE)
 
 # Bible reference: book abbrev + chapter, verse e.g. "Józs 1,8", "Jer 17,8", "J 1, 8"
 REFERENCE_RE = re.compile(r"\s*[A-Za-zÀ-ÿ]+\s+\d+\s*,\s*\d+\.?\s*")
@@ -33,8 +35,10 @@ def first_letter_or_digraph(word: str) -> str:
 
 
 def remove_verse_numbers(line: str) -> str:
-    """Remove leading Bible verse numbers from a line (e.g. '1 ', '3:16 ')."""
-    return VERSE_NUMBER_RE.sub("", line).strip()
+    """Remove verse numbers: at line start (e.g. '1 ', '3:16 ') and after comma/period (e.g. ', 2 ', '. 3 ')."""
+    line = VERSE_NUMBER_RE.sub("", line)
+    line = VERSE_NUMBER_MID_RE.sub(r"\1 ", line)  # keep comma/period and one space
+    return line.strip()
 
 
 def remove_references(line: str) -> str:
