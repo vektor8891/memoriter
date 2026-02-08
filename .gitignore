@@ -1,0 +1,19 @@
+# Virtual environment
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Tests
+.pytest_cache/
+
+# Generated output
+output/
+
+# Editor / OS
+.idea/
+*.swp
+*.swo
+.DS_Store

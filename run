@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Memoriter run script: sets up virtual environment and runs create_summary.
+# Edit the parameters below, then run: ./run
+
+set -e
+cd "$(dirname "$0")"
+
+# -----------------------------------------------------------------------------
+# Parameters (edit these, or override when running: INPUT_FILE=passage.txt ./run)
+# -----------------------------------------------------------------------------
+# Read passage from this file (leave empty to use TEXT or stdin).
+INPUT_FILE="${INPUT_FILE:-}"
+
+# Or pass text directly (leave empty if using INPUT_FILE or stdin).
+TEXT="${TEXT:-}"
+
+# Save summary to output/OUTPUT_NAME.txt (leave empty to only print).
+OUTPUT_NAME="${OUTPUT_NAME:-}"
+
+# Set to "yes" to treat entire text as one line (single string of first letters).
+NO_STRUCTURE="${NO_STRUCTURE:-no}"
+# -----------------------------------------------------------------------------
+
+# Set up virtual environment if missing
+if [[ ! -d .venv ]]; then
+  echo "Creating virtual environment..."
+  python3 -m venv .venv
+fi
+PYTHON=".venv/bin/python"
+
+# Build and run create_summary.py
+ARGS=()
+if [[ -n "$INPUT_FILE" ]]; then
+  ARGS+=(-f "$INPUT_FILE")
+fi
+if [[ -n "$OUTPUT_NAME" ]]; then
+  ARGS+=(-o "$OUTPUT_NAME")
+fi
+if [[ "$NO_STRUCTURE" = yes ]]; then
+  ARGS+=(--no-structure)
+fi
+if [[ -n "$TEXT" ]]; then
+  ARGS+=("$TEXT")
+fi
+
+exec "$PYTHON" create_summary.py "${ARGS[@]}"
