@@ -8,8 +8,9 @@ __pycache__/
 
 # Tests
 .pytest_cache/
+tests/input/
 
-# Generated output
+# Generated output (use input/ for source text, summaries/ for summaries you keep in the repo)
 output/
 
 # Editor / OS

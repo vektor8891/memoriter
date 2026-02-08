@@ -124,18 +124,23 @@ class TestMainIntegration:
         assert out_file.exists()
         assert out_file.read_text() == "I t b."
 
-    def test_script_with_file_input(self, tmp_path):
+    def test_script_with_file_input(self):
         import subprocess
         project_root = Path(__file__).resolve().parent.parent
-        passage_file = tmp_path / "passage.txt"
+        tests_input = project_root / "tests" / "input"
+        tests_input.mkdir(parents=True, exist_ok=True)
+        passage_file = tests_input / "tests_passage.txt"
         passage_file.write_text("For God so loved the world.")
-        result = subprocess.run(
-            [sys.executable, "create_summary.py", "-f", str(passage_file), "-o", "fromfile"],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0
-        assert "F G s l t w." in result.stdout
-        out_file = project_root / "output" / "fromfile.txt"
-        assert out_file.read_text() == "F G s l t w."
+        try:
+            result = subprocess.run(
+                [sys.executable, "create_summary.py", "-f", str(passage_file), "-o", "fromfile"],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode == 0
+            assert "F G s l t w." in result.stdout
+            out_file = project_root / "output" / "fromfile.txt"
+            assert out_file.read_text() == "F G s l t w."
+        finally:
+            passage_file.unlink(missing_ok=True)
