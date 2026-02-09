@@ -77,6 +77,10 @@ class TestRemoveReferences:
         assert remove_references("Aki ezeket teszi. 3Móz 25,37; 5Móz 16,19") == "Aki ezeket teszi. ;"
         assert remove_references("text 1Móz 1,1 end") == "text end"
 
+    def test_book_single_number_reference(self):
+        # Zsolt 101 (Psalms 101) = book + single number, no comma
+        assert remove_references("ha kárt vall is. Zsolt 101") == "ha kárt vall is."
+
 
 class TestGetFirstLetters:
     """Tests for get_first_letters."""
