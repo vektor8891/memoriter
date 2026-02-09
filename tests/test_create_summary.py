@@ -61,6 +61,13 @@ class TestRemoveVerseNumbers:
     def test_verse_after_semicolon(self):
         assert remove_verse_numbers("igazat szól; 3 nyelvével nem") == "igazat szól; nyelvével nem"
 
+    def test_leading_debris_after_ref_fragment_stripped(self):
+        # Leftover from ref like "Zsolt 18,31; 119,130": leading digits removed leave ",130 9 ";
+        # MID removal leaves ", 9 " or ", 130 ". New cleanup strips this so no leading ", 9 " in result.
+        assert remove_verse_numbers(", 9 Az Úr rendelkezései helyesek.") == "Az Úr rendelkezései helyesek."
+        assert remove_verse_numbers(", 130 9 Az Úr parancsolata.") == "Az Úr parancsolata."
+        assert remove_verse_numbers("; 119,130 9 Az Úr törvénye.") == "Az Úr törvénye."
+
 
 class TestRemoveReferences:
     """Tests for remove_references."""
@@ -173,6 +180,18 @@ class TestGetFirstLetters:
         result = get_first_letters(text)
         assert "E ö a sz, é u a l, t i b v." in result
         assert "- 2;,;" not in result and "- 2 ; , ;" not in result  # no leftover ref debris
+
+    def test_orphan_verse_ref_fragment_no_leading_debris(self):
+        # Psalm-19 style: "Zsolt 18,31; 119,130" — only first ref has book name; "119,130" stays.
+        # After verse removal we get leading ", 9 " or ", 130 ". Output must not start with ", 9 ".
+        text = (
+            "8 Az Úr törvénye tökéletes, felüdíti a lelket. Zsolt 18,31; 119,130\n"
+            "9 Az Úr rendelkezései helyesek, megörvendeztetik a szívet."
+        )
+        result = get_first_letters(text)
+        # Second sentence's first letters must be "A Ú r h, m a sz." with no leading ", 9 "
+        assert "A Ú r h, m a sz." in result
+        assert ", 9 A Ú r h" not in result
 
 
 class TestMainIntegration:

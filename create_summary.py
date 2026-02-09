@@ -40,6 +40,12 @@ def remove_verse_numbers(line: str) -> str:
     """Remove verse numbers: at line start (e.g. '1 ', '3:16 ') and after comma/period (e.g. ', 2 ', '. 3 ')."""
     line = VERSE_NUMBER_RE.sub("", line)
     line = VERSE_NUMBER_MID_RE.sub(r"\1 ", line)  # keep comma/period and one space
+    # Strip leading debris: punctuation + optional verse numbers (e.g. ", 9 ", ", 130 9 " from ref fragments)
+    line = re.sub(r"^\s*[,.;]\s*(?:\d+(?::\d+)?[.,\s;-]*)*\s*", "", line)
+    # Strip any remaining leading comma/semicolon + spaces (e.g. "; , 9 " -> ",  " after first strip)
+    line = re.sub(r"^\s*[,.;]\s*", "", line)
+    # Strip any leading verse number revealed by debris removal (e.g. "9 Az Úr...")
+    line = VERSE_NUMBER_RE.sub("", line)
     return line.strip()
 
 
