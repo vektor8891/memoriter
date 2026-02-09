@@ -4,16 +4,26 @@
 #
 # Modes:
 #   ./run                          - process default input (psalm_1)
-#   INPUT_FILE=all ./run           - loop input/*, create output only for missing
+#   INPUT_FILE=all ./run           - loop input/*, process only inputs with missing output
+#   INPUT_FILE=all ./run -f        - same but force: regenerate all outputs
 #   INPUT_FILE=path.txt ./run      - process single file (set OUTPUT_NAME for output)
 
 set -e
 cd "$(dirname "$0")"
 
+# Parse -f / --force (regenerate all outputs in batch mode)
+FORCE=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -f|--force) FORCE=1; shift ;;
+    *) break ;;
+  esac
+done
+
 # -----------------------------------------------------------------------------
 # Parameters (edit these, or override when running: INPUT_FILE=passage.txt ./run)
 # -----------------------------------------------------------------------------
-# Read passage from this file. Use "all" to process every file in input/ (missing outputs only).
+# Read passage from this file. Use "all" to process every file in input/.
 INPUT_FILE="${INPUT_FILE:-input/psalm_1.txt}"
 
 # Or pass text directly (leave empty if using INPUT_FILE or stdin).
@@ -48,7 +58,7 @@ run_one() {
 }
 
 if [[ "$INPUT_FILE" = all ]]; then
-  # Batch: loop input/*, create output only where missing
+  # Batch: loop input/*; without -f only process when output is missing
   INPUT_DIR="input"
   OUTPUT_DIR="output"
   mkdir -p "$OUTPUT_DIR"
@@ -58,13 +68,13 @@ if [[ "$INPUT_FILE" = all ]]; then
     basename="${infile##*/}"
     outname="${basename%.*}"
     outfile="$OUTPUT_DIR/${outname}.txt"
-    if [[ ! -f "$outfile" ]]; then
-      echo "Creating $outfile (from $infile)"
+    if [[ $FORCE -eq 1 || ! -f "$outfile" ]]; then
+      echo "Processing $infile -> $outfile"
       run_one "$infile" "$outname"
       count=$((count + 1))
     fi
   done
-  echo "Done. Created $count output(s)."
+  echo "Done. Processed $count file(s)."
   exit 0
 fi
 
@@ -87,7 +97,7 @@ if [[ -z "$INPUT_FILE" && -z "$TEXT" ]]; then
   echo "No input set. Either:"
   echo "  1. Edit the run script and set INPUT_FILE= (e.g. input/psalm_1.txt) or TEXT="
   echo "  2. Run with: INPUT_FILE=input/psalm_1.txt OUTPUT_NAME=psalm_1 ./run"
-  echo "  3. Run all (only missing outputs): INPUT_FILE=all ./run"
+  echo "  3. Run all: INPUT_FILE=all ./run"
   echo "  4. Pipe text: echo 'Your passage here' | ./run"
   exit 1
 fi
