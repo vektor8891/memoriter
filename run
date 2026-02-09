@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Memoriter run script: sets up virtual environment and runs create_summary.
 # Edit the parameters below, then run: ./run
+#
+# Modes:
+#   ./run                          - process default input (psalm_1)
+#   INPUT_FILE=all ./run           - loop input/*, create output only for missing
+#   INPUT_FILE=path.txt ./run      - process single file (set OUTPUT_NAME for output)
 
 set -e
 cd "$(dirname "$0")"
@@ -8,13 +13,13 @@ cd "$(dirname "$0")"
 # -----------------------------------------------------------------------------
 # Parameters (edit these, or override when running: INPUT_FILE=passage.txt ./run)
 # -----------------------------------------------------------------------------
-# Read passage from this file (leave empty to use TEXT or stdin).
+# Read passage from this file. Use "all" to process every file in input/ (missing outputs only).
 INPUT_FILE="${INPUT_FILE:-input/psalm_1.txt}"
 
 # Or pass text directly (leave empty if using INPUT_FILE or stdin).
 TEXT="${TEXT:-}"
 
-# Save summary to output/OUTPUT_NAME.txt (leave empty to only print).
+# Save summary to output/OUTPUT_NAME.txt (leave empty to only print). Used for single-file runs.
 OUTPUT_NAME="${OUTPUT_NAME:-psalm_1}"
 
 # Set to "yes" to treat entire text as one line (single string of first letters).
@@ -32,7 +37,38 @@ PYTHON=".venv/bin/python"
 "$PYTHON" -m pip install -q -r requirements.txt
 "$PYTHON" -m pre_commit install
 
-# Build and run create_summary.py
+run_one() {
+  local infile="$1"
+  local outname="$2"
+  local extra=()
+  if [[ "$NO_STRUCTURE" = yes ]]; then
+    extra=(--no-structure)
+  fi
+  "$PYTHON" create_summary.py -f "$infile" -o "$outname" "${extra[@]}"
+}
+
+if [[ "$INPUT_FILE" = all ]]; then
+  # Batch: loop input/*, create output only where missing
+  INPUT_DIR="input"
+  OUTPUT_DIR="output"
+  mkdir -p "$OUTPUT_DIR"
+  count=0
+  for infile in "$INPUT_DIR"/*; do
+    [[ -f "$infile" ]] || continue
+    basename="${infile##*/}"
+    outname="${basename%.*}"
+    outfile="$OUTPUT_DIR/${outname}.txt"
+    if [[ ! -f "$outfile" ]]; then
+      echo "Creating $outfile (from $infile)"
+      run_one "$infile" "$outname"
+      count=$((count + 1))
+    fi
+  done
+  echo "Done. Created $count output(s)."
+  exit 0
+fi
+
+# Single-file run
 ARGS=()
 if [[ -n "$INPUT_FILE" ]]; then
   ARGS+=(-f "$INPUT_FILE")
@@ -51,7 +87,8 @@ if [[ -z "$INPUT_FILE" && -z "$TEXT" ]]; then
   echo "No input set. Either:"
   echo "  1. Edit the run script and set INPUT_FILE= (e.g. input/psalm_1.txt) or TEXT="
   echo "  2. Run with: INPUT_FILE=input/psalm_1.txt OUTPUT_NAME=psalm_1 ./run"
-  echo "  3. Pipe text: echo 'Your passage here' | ./run"
+  echo "  3. Run all (only missing outputs): INPUT_FILE=all ./run"
+  echo "  4. Pipe text: echo 'Your passage here' | ./run"
   exit 1
 fi
 
