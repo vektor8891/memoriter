@@ -5,7 +5,8 @@
 # Modes:
 #   ./run                          - process default input (psalm_1)
 #   INPUT_FILE=all ./run           - loop input/*, process only inputs with missing output
-#   INPUT_FILE=all ./run -f        - same but force: regenerate all outputs
+#   ./run -f                       - process all inputs and regenerate outputs (same as INPUT_FILE=all ./run -f)
+#   INPUT_FILE=all ./run -f        - same: force regenerate all outputs
 #   INPUT_FILE=path.txt ./run      - process single file (set OUTPUT_NAME for output)
 
 set -e
@@ -23,8 +24,13 @@ done
 # -----------------------------------------------------------------------------
 # Parameters (edit these, or override when running: INPUT_FILE=passage.txt ./run)
 # -----------------------------------------------------------------------------
-# Read passage from this file. Use "all" to process every file in input/.
-INPUT_FILE="${INPUT_FILE:-input/psalm_1.txt}"
+# Read passage from this file. Use "all" to process every file in input/. With -f and no INPUT_FILE, defaults to "all".
+INPUT_FILE="${INPUT_FILE:-}"
+if [[ -z "$INPUT_FILE" && $FORCE -eq 1 ]]; then
+  INPUT_FILE=all
+elif [[ -z "$INPUT_FILE" ]]; then
+  INPUT_FILE="input/psalm_1.txt"
+fi
 
 # Or pass text directly (leave empty if using INPUT_FILE or stdin).
 TEXT="${TEXT:-}"
@@ -58,13 +64,12 @@ run_one() {
 }
 
 if [[ "$INPUT_FILE" = all ]]; then
-  # Batch: loop input/*; without -f only process when output is missing
+  # Batch: process every file in input/; without -f only when output is missing
   INPUT_DIR="input"
   OUTPUT_DIR="output"
   mkdir -p "$OUTPUT_DIR"
   count=0
-  for infile in "$INPUT_DIR"/*; do
-    [[ -f "$infile" ]] || continue
+  while IFS= read -r -d '' infile; do
     basename="${infile##*/}"
     outname="${basename%.*}"
     outfile="$OUTPUT_DIR/${outname}.txt"
@@ -73,7 +78,7 @@ if [[ "$INPUT_FILE" = all ]]; then
       run_one "$infile" "$outname"
       count=$((count + 1))
     fi
-  done
+  done < <(find "$INPUT_DIR" -maxdepth 1 -type f -print0 | sort -z)
   echo "Done. Processed $count file(s)."
   exit 0
 fi

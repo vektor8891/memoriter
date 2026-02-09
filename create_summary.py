@@ -16,11 +16,13 @@ HUNGARIAN_DIGRAPHS = ("cs", "gy", "ly", "ny", "sz", "ty", "zs")
 
 # Verse number at start of line: e.g. "1 ", "2 ", "3:16 ", "1. "
 VERSE_NUMBER_RE = re.compile(r"^\s*\d+(?::\d+)?[.\s]*", re.IGNORECASE)
-# Verse number after comma or period (e.g. ", 2 ", ". 3 ") when verses are merged
-VERSE_NUMBER_MID_RE = re.compile(r"([.,])\s*\d+(?::\d+)?[.\s]*", re.IGNORECASE)
+# Verse number after comma, period, or semicolon (e.g. ", 2 ", ". 3 ", "; 3 ") when verses are merged
+VERSE_NUMBER_MID_RE = re.compile(r"([.,;])\s*\d+(?::\d+)?[.\s]*", re.IGNORECASE)
 
-# Bible reference: book abbrev + chapter, verse e.g. "Józs 1,8", "Jer 17,8", "J 1, 8"
-REFERENCE_RE = re.compile(r"\s*[A-Za-zÀ-ÿ]+\s+\d+\s*,\s*\d+\.?\s*")
+# Bible reference: book abbrev + chapter, verse (e.g. Józs 1,8; 1Móz/2Móz/3Móz/5Móz = 1st/2nd/3rd/5th Moses)
+REFERENCE_RE = re.compile(r"\s*\d*[A-Za-zÀ-ÿ]+\s+\d+\s*,\s*\d+\.?\s*")
+# Book + single number, e.g. Zsolt 101 (Psalms 101); negative lookahead avoids matching "Józs 1," from "Józs 1,8"
+REFERENCE_SIMPLE_RE = re.compile(r"\s*\d*[A-Za-zÀ-ÿ]+\s+\d+(?!\s*,\s*\d)\s*")
 
 
 def first_letter_or_digraph(word: str) -> str:
@@ -42,8 +44,9 @@ def remove_verse_numbers(line: str) -> str:
 
 
 def remove_references(line: str) -> str:
-    """Remove Bible references from a line (e.g. 'Józs 1,8', 'Jer 17,8', 'J 1, 8')."""
+    """Remove Bible references (e.g. 'Józs 1,8', 'Zsolt 101', '3Móz 25,37')."""
     line = REFERENCE_RE.sub(" ", line)
+    line = REFERENCE_SIMPLE_RE.sub(" ", line)
     return re.sub(r"\s+", " ", line).strip()
 
 
@@ -64,7 +67,7 @@ def _first_letters_for_line(line: str) -> str:
             parts.append("-".join(first_letters))
         else:
             parts.append(token)
-    no_space_before = ".!?,"
+    no_space_before = ".!?,;"
     out_parts = []
     for i, p in enumerate(parts):
         if i > 0 and p not in no_space_before:
@@ -94,11 +97,11 @@ def get_first_letters(
         sentence = sentence.strip()
         if not sentence:
             continue
-        if remove_verses:
-            sentence = remove_verse_numbers(sentence)
         if remove_refs:
             sentence = remove_references(sentence)
-        if not sentence:
+        if remove_verses:
+            sentence = remove_verse_numbers(sentence)
+        if not sentence or not re.search(r"\w", sentence):
             continue
         result_lines.append(_first_letters_for_line(sentence))
 

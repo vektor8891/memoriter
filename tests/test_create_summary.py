@@ -58,6 +58,9 @@ class TestRemoveVerseNumbers:
     def test_verse_with_dot(self):
         assert remove_verse_numbers("1. In the beginning") == "In the beginning"
 
+    def test_verse_after_semicolon(self):
+        assert remove_verse_numbers("igazat szól; 3 nyelvével nem") == "igazat szól; nyelvével nem"
+
 
 class TestRemoveReferences:
     """Tests for remove_references."""
@@ -68,6 +71,11 @@ class TestRemoveReferences:
 
     def test_reference_with_space(self):
         assert remove_references("Minden sikerül. Jer 17,8") == "Minden sikerül."
+
+    def test_numbered_moses_references(self):
+        # 1Móz, 2Móz, 3Móz, 5Móz (1st/2nd/3rd/5th Moses) are always references
+        assert remove_references("Aki ezeket teszi. 3Móz 25,37; 5Móz 16,19") == "Aki ezeket teszi. ;"
+        assert remove_references("text 1Móz 1,1 end") == "text end"
 
 
 class TestGetFirstLetters:
@@ -116,6 +124,13 @@ class TestGetFirstLetters:
         assert get_first_letters(text, remove_verses=True) == "I t b"
         # With remove_verses=False, "1" is a token
         assert get_first_letters(text, remove_verses=False) == "1 I t b"
+
+    def test_semicolon_followed_by_verse_number(self):
+        # Psalm-15 style: sentence ends with ; then verse number then next sentence.
+        # Output must have no space before semicolon and verse number must be removed.
+        text = "Az, aki feddhetetlenül él, törekszik az igazságra, és szíve szerint igazat szól; 3 nyelvével nem rágalmaz."
+        result = get_first_letters(text)
+        assert result == "A, a f é, t a i, é sz sz i sz; ny n r."
 
 
 class TestMainIntegration:
