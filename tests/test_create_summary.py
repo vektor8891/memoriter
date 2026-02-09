@@ -144,14 +144,14 @@ class TestMainIntegration:
         import subprocess
         project_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
-            [sys.executable, "create_summary.py", "In the beginning.", "-o", "out"],
+            [sys.executable, "create_summary.py", "In the beginning.", "-o", "test_out"],
             cwd=project_root,
             capture_output=True,
             text=True,
         )
         assert result.returncode == 0
         assert "I t b." in result.stdout
-        out_file = project_root / "output" / "out.txt"
+        out_file = project_root / "output" / "test_out.txt"
         assert out_file.exists()
         assert out_file.read_text() == "I t b."
 
@@ -164,14 +164,14 @@ class TestMainIntegration:
         passage_file.write_text("For God so loved the world.")
         try:
             result = subprocess.run(
-                [sys.executable, "create_summary.py", "-f", str(passage_file), "-o", "fromfile"],
+                [sys.executable, "create_summary.py", "-f", str(passage_file), "-o", "test_fromfile"],
                 cwd=project_root,
                 capture_output=True,
                 text=True,
             )
             assert result.returncode == 0
             assert "F G s l t w." in result.stdout
-            out_file = project_root / "output" / "fromfile.txt"
+            out_file = project_root / "output" / "test_fromfile.txt"
             assert out_file.read_text() == "F G s l t w."
         finally:
             passage_file.unlink(missing_ok=True)
