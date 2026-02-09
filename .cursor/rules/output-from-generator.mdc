@@ -1,0 +1,18 @@
+---
+description: Never edit output files manually; always regenerate with create_summary.py
+alwaysApply: true
+---
+
+# Output files are generated only
+
+**Do not manually edit any file under `output/`.** All content there is produced by the generator script.
+
+## What to do instead
+
+1. **To change or fix output**: Run the generator so the output is recreated from the input.
+2. **Script**: `create_summary.py` (memorization / first-letter summary).
+3. **Usage**:
+   - From an input file: `python create_summary.py -f input/<name>.txt -o <name>`
+   - Example: `python create_summary.py -f input/psalm_16.txt -o psalm_16` → writes `output/psalm_16.txt`
+
+If the user asks to fix or edit something in `output/*.txt`, apply the change in the **input** file (or in the script’s logic), then run `create_summary.py` to regenerate the output.

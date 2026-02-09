@@ -67,7 +67,7 @@ def _first_letters_for_line(line: str) -> str:
             parts.append("-".join(first_letters))
         else:
             parts.append(token)
-    no_space_before = ".!?,;"
+    no_space_before = ".!?,;:"
     out_parts = []
     for i, p in enumerate(parts):
         if i > 0 and p not in no_space_before:
@@ -160,7 +160,7 @@ def main() -> None:
         out_dir.mkdir(exist_ok=True)
         name = args.output if args.output.endswith(".txt") else f"{args.output}.txt"
         out_path = out_dir / name
-        out_path.write_text(summary, encoding="utf-8")
+        out_path.write_text(summary.rstrip("\n") + "\n", encoding="utf-8")
         print(f"\nSaved to {out_path}", file=sys.stderr)
 
 

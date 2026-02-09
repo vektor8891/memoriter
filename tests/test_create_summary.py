@@ -153,7 +153,7 @@ class TestMainIntegration:
         assert "I t b." in result.stdout
         out_file = project_root / "output" / "test_out.txt"
         assert out_file.exists()
-        assert out_file.read_text() == "I t b."
+        assert out_file.read_text() == "I t b.\n"
 
     def test_script_with_file_input(self):
         import subprocess
@@ -172,6 +172,6 @@ class TestMainIntegration:
             assert result.returncode == 0
             assert "F G s l t w." in result.stdout
             out_file = project_root / "output" / "test_fromfile.txt"
-            assert out_file.read_text() == "F G s l t w."
+            assert out_file.read_text() == "F G s l t w.\n"
         finally:
             passage_file.unlink(missing_ok=True)
