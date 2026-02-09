@@ -116,6 +116,18 @@ class TestRemoveReferences:
         assert remove_references(" ; 13,35; Zsolt 109,31") == ""
         assert remove_references(" -28; 13,35; 9 Ezért örül.") == "9 Ezért örül."
 
+    def test_orphan_ref_fragment_at_end_removed(self):
+        # Psalm 107 style: "..., Ézs 35,10; 43,5-6" — book ref removed leaves ", 43,5-6"; strip it
+        assert remove_references("Így szóljanak az Úr megváltottai, akiket megváltott az ellenség kezéből, Ézs 35,10; 43,5-6") == (
+            "Így szóljanak az Úr megváltottai, akiket megváltott az ellenség kezéből"
+        )
+
+    def test_orphan_ref_fragment_followed_by_verse_number_removed(self):
+        # Merged sentence: "... Ézs 35,10; 43,5-6 3 és össze..." — remove ", 43,5-6 " before verse number
+        assert remove_references("Így szóljanak az Úr megváltottai, akiket megváltott az ellenség kezéből, Ézs 35,10; 43,5-6 3 és összegyűjtött") == (
+            "Így szóljanak az Úr megváltottai, akiket megváltott az ellenség kezéből 3 és összegyűjtött"
+        )
+
     def test_colon_kept_after_ref_list(self):
         # "word: ref; ref; ref" -> "word:" (semicolons removed, colon kept)
         assert remove_references("mint a növekvő fű: Jób 14,1-2; Ézs 40,6-7; 1Pt 1,24") == "mint a növekvő fű:"

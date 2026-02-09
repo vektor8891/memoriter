@@ -65,6 +65,10 @@ def remove_references(line: str) -> str:
     line = re.sub(r",\s*;\s*", ", ", line)
     # Strip leftover "-28; 13,35; " style debris (verse range remainder + continuation refs without book)
     line = re.sub(r"^\s*(?:-\d+\s*;\s*|\d+\s*,\s*\d+\s*;\s*)+", "", line)
+    # Orphan ref fragment at end (no book name): e.g. ", 43,5-6" or "; 43,5-6" after "Ézs 35,10" removed
+    line = re.sub(r"[,;]?\s*\d+\s*,\s*\d+(?:-\d+)?\.?\s*$", "", line)
+    # Same when followed by space + verse number (merged sentence e.g. "... 43,5-6 3 és...")
+    line = re.sub(r"[,;]?\s*\d+\s*,\s*\d+(?:-\d+)?\.?\s+(?=\d\s+)", " ", line)
     # Strip semicolon(s) left from reference lists, keep colon (e.g. "fű: ; ; " -> "fű: ")
     line = re.sub(r"(?<=:)\s*(?:\s*;\s*)+", " ", line)
     return line.strip()
