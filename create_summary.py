@@ -19,8 +19,8 @@ VERSE_NUMBER_RE = re.compile(r"^\s*\d+(?::\d+)?[.\s]*", re.IGNORECASE)
 # Verse number after comma, period, or semicolon (e.g. ", 2 ", ". 3 ", "; 3 ") when verses are merged
 VERSE_NUMBER_MID_RE = re.compile(r"([.,;])\s*\d+(?::\d+)?[.\s]*", re.IGNORECASE)
 
-# Bible reference: book abbrev + chapter, verse (e.g. Józs 1,8; 1Móz/2Móz/3Móz/5Móz = 1st/2nd/3rd/5th Moses)
-REFERENCE_RE = re.compile(r"\s*\d*[A-Za-zÀ-ÿ]+\s+\d+\s*,\s*\d+\.?\s*")
+# Bible reference: book abbrev + chapter, verse or verse range (e.g. Józs 1,8; ApCsel 2,25-28)
+REFERENCE_RE = re.compile(r"\s*\d*[A-Za-zÀ-ÿ]+\s+\d+\s*,\s*\d+(?:-\d+)?\.?\s*")
 # Book + single number, e.g. Zsolt 101 (Psalms 101); negative lookahead avoids matching "Józs 1," from "Józs 1,8"
 REFERENCE_SIMPLE_RE = re.compile(r"\s*\d*[A-Za-zÀ-ÿ]+\s+\d+(?!\s*,\s*\d)\s*")
 
@@ -47,7 +47,12 @@ def remove_references(line: str) -> str:
     """Remove Bible references (e.g. 'Józs 1,8', 'Zsolt 101', '3Móz 25,37')."""
     line = REFERENCE_RE.sub(" ", line)
     line = REFERENCE_SIMPLE_RE.sub(" ", line)
-    return re.sub(r"\s+", " ", line).strip()
+    line = re.sub(r"\s+", " ", line)
+    # Strip leading semicolons left from reference lists (e.g. "; ref1; ref2" -> "; " before "6 Verse...")
+    line = re.sub(r"^\s*;\s*", "", line)
+    # Strip leftover "-28; 13,35; " style debris (verse range remainder + continuation refs without book)
+    line = re.sub(r"^\s*(?:-\d+\s*;\s*|\d+\s*,\s*\d+\s*;\s*)+", "", line)
+    return line.strip()
 
 
 # Split on . ! ? followed by whitespace (sentence boundaries)

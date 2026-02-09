@@ -81,6 +81,22 @@ class TestRemoveReferences:
         # Zsolt 101 (Psalms 101) = book + single number, no comma
         assert remove_references("ha kárt vall is. Zsolt 101") == "ha kárt vall is."
 
+    def test_leading_semicolon_after_refs_removed(self):
+        # Ref list "Zsolt 73,26; JSir 3,24" leaves "; " before next sentence; strip it
+        assert remove_references(" Zsolt 73,26; JSir 3,24") == ""
+        assert remove_references(" ; 6 Osztályrészem kies helyre esett.") == "6 Osztályrészem kies helyre esett."
+
+    def test_verse_range_in_reference(self):
+        # ApCsel 2,25-28 (Acts 2:25-28) should be removed as a single reference
+        assert remove_references("Text. ApCsel 2,25-28 end") == "Text. end"
+        assert remove_references("ApCsel 2,25-28") == ""
+
+    def test_leftover_debris_after_ref_removal(self):
+        # Verse range remainder "-28; 13,35; " and continuation ref "13,35; " without book name
+        assert remove_references("-28; 13,35; Ezért örül a szívem.") == "Ezért örül a szívem."
+        assert remove_references(" ; 13,35; Zsolt 109,31") == ""
+        assert remove_references(" -28; 13,35; 9 Ezért örül.") == "9 Ezért örül."
+
 
 class TestGetFirstLetters:
     """Tests for get_first_letters."""
@@ -135,6 +151,28 @@ class TestGetFirstLetters:
         text = "Az, aki feddhetetlenül él, törekszik az igazságra, és szíve szerint igazat szól; 3 nyelvével nem rágalmaz."
         result = get_first_letters(text)
         assert result == "A, a f é, t a i, é sz sz i sz; ny n r."
+
+    def test_ref_list_then_verse_no_leading_debris(self):
+        # Psalm-16 style: sentence ends with ref list (verse range + continuation refs), then next verse.
+        # Output must not start with "; " or "- 2;,; " from reference leftovers.
+        text = (
+            "5 Uram, te vagy osztályrészem és poharam, te tartod kezedben sorsomat. Zsolt 73,26; JSir 3,24\n\n"
+            "6 Osztályrészem kies helyre esett, örökségem nagyon tetszik nekem."
+        )
+        result = get_first_letters(text)
+        assert "O k h e, ö n t n." in result
+        assert result.count("; O k h e") == 0  # no leading semicolon before this line
+
+    def test_verse_range_ref_list_then_verse_no_leading_debris(self):
+        # Ref list with verse range (ApCsel 2,25-28) and "; 13,35; Zsolt 109,31" then next verse
+        text = (
+            "8 Az Úrra tekintek szüntelen, nem tántorodom meg, mert a jobbomon van. "
+            "ApCsel 2,25-28; 13,35; Zsolt 109,31\n\n"
+            "9 Ezért örül a szívem, és ujjong a lelkem, testem is biztonságban van."
+        )
+        result = get_first_letters(text)
+        assert "E ö a sz, é u a l, t i b v." in result
+        assert "- 2;,;" not in result and "- 2 ; , ;" not in result  # no leftover ref debris
 
 
 class TestMainIntegration:
