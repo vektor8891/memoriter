@@ -19,6 +19,9 @@ VERSE_NUMBER_RE = re.compile(r"^\s*\d+(?::\d+)?[.\s]*", re.IGNORECASE)
 # Verse number after comma, period, or semicolon (e.g. ", 2 ", ". 3 ", "; 3 ") when verses are merged
 VERSE_NUMBER_MID_RE = re.compile(r"([.,;])\s*\d+(?::\d+)?[.\s]*", re.IGNORECASE)
 
+# Liturgical pause marker (Selah / Szela) – not part of the text, just indicates a pause
+SELAH_RE = re.compile(r"\s*\(\s*Sz(?:ela)?\.?\s*\)\s*", re.IGNORECASE)
+
 # Bible reference: book abbrev + chapter, verse or verse range (e.g. Józs 1,8; ApCsel 2,25-28)
 REFERENCE_RE = re.compile(r"\s*\d*[A-Za-zÀ-ÿ]+\s+\d+\s*,\s*\d+(?:-\d+)?\.?\s*")
 # Book + single number, e.g. Zsolt 101 (Psalms 101); negative lookahead avoids matching "Józs 1," from "Józs 1,8"
@@ -46,6 +49,8 @@ def remove_verse_numbers(line: str) -> str:
     line = re.sub(r"^\s*[,.;]\s*", "", line)
     # Strip any leading verse number revealed by debris removal (e.g. "9 Az Úr...")
     line = VERSE_NUMBER_RE.sub("", line)
+    # Remove isolated single-digit verse number in middle (e.g. "fű  6 reggel" after ref removal)
+    line = re.sub(r"\s+\d\s+(?=\s*[A-Za-zÀ-ÿ])", " ", line)
     return line.strip()
 
 
@@ -56,8 +61,12 @@ def remove_references(line: str) -> str:
     line = re.sub(r"\s+", " ", line)
     # Strip leading semicolons left from reference lists (e.g. "; ref1; ref2" -> "; " before "6 Verse...")
     line = re.sub(r"^\s*;\s*", "", line)
+    # Strip ", ; " or ", ;" left when two refs were removed (e.g. "text, Zsolt 34,8; Mt 4,6" -> "text, ; ")
+    line = re.sub(r",\s*;\s*", ", ", line)
     # Strip leftover "-28; 13,35; " style debris (verse range remainder + continuation refs without book)
     line = re.sub(r"^\s*(?:-\d+\s*;\s*|\d+\s*,\s*\d+\s*;\s*)+", "", line)
+    # Strip semicolon(s) left from reference lists, keep colon (e.g. "fű: ; ; " -> "fű: ")
+    line = re.sub(r"(?<=:)\s*(?:\s*;\s*)+", " ", line)
     return line.strip()
 
 
@@ -78,10 +87,17 @@ def _first_letters_for_line(line: str) -> str:
             parts.append("-".join(first_letters))
         else:
             parts.append(token)
-    no_space_before = ".!?,;:"
+    # Punctuation (and quotation marks) that should not have a space before them
+    no_space_before = ".!?,;:\u201e\u201c\u201d"  # „ " "
+    opening_quote = "\u201e"  # „ — no space after it so „A stays together
     out_parts = []
     for i, p in enumerate(parts):
         if i > 0 and p not in no_space_before:
+            # No space only after opening quote „; space after closing " "
+            if parts[i - 1] != opening_quote:
+                out_parts.append(" ")
+        elif i > 0 and p == "\u201e" and parts[i - 1] == ":":
+            # Space between : and opening quote „
             out_parts.append(" ")
         out_parts.append(p)
     return "".join(out_parts)
@@ -101,6 +117,7 @@ def get_first_letters(
     """
     # Merge all lines into one string, then split into sentences
     merged = re.sub(r"\s*\n\s*", " ", text.strip())
+    merged = SELAH_RE.sub(" ", merged)  # remove Selah/Szela pause markers (not part of psalm)
     sentences = SENTENCE_SPLIT_RE.split(merged)
     result_lines = []
 

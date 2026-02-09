@@ -3,7 +3,10 @@
 import sys
 from pathlib import Path
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    pytest = None
 
 # Import from project root
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -61,6 +64,10 @@ class TestRemoveVerseNumbers:
     def test_verse_after_semicolon(self):
         assert remove_verse_numbers("igazat szól; 3 nyelvével nem") == "igazat szól; nyelvével nem"
 
+    def test_single_digit_verse_number_in_middle_removed(self):
+        # After ref removal, "fű: ref; ref; 6 reggel" becomes "fű:  6 reggel"; verse number stripped
+        assert remove_verse_numbers("fű  6 reggel virágzik") == "fű reggel virágzik"
+
     def test_leading_debris_after_ref_fragment_stripped(self):
         # Leftover from ref like "Zsolt 18,31; 119,130": leading digits removed leave ",130 9 ";
         # MID removal leaves ", 9 " or ", 130 ". New cleanup strips this so no leading ", 9 " in result.
@@ -88,6 +95,11 @@ class TestRemoveReferences:
         # Zsolt 101 (Psalms 101) = book + single number, no comma
         assert remove_references("ha kárt vall is. Zsolt 101") == "ha kárt vall is."
 
+    def test_comma_semicolon_debris_after_two_refs_removed(self):
+        # "text, Zsolt 34,8; Mt 4,6" -> refs removed leave ", ; "; strip to ", "
+        assert remove_references("minden utadon, Zsolt 34,8; Mt 4,6") == "minden utadon,"
+        assert remove_references("utadon, Zsolt 34,8; Mt 4,6 kézen") == "utadon, kézen"
+
     def test_leading_semicolon_after_refs_removed(self):
         # Ref list "Zsolt 73,26; JSir 3,24" leaves "; " before next sentence; strip it
         assert remove_references(" Zsolt 73,26; JSir 3,24") == ""
@@ -103,6 +115,12 @@ class TestRemoveReferences:
         assert remove_references("-28; 13,35; Ezért örül a szívem.") == "Ezért örül a szívem."
         assert remove_references(" ; 13,35; Zsolt 109,31") == ""
         assert remove_references(" -28; 13,35; 9 Ezért örül.") == "9 Ezért örül."
+
+    def test_colon_kept_after_ref_list(self):
+        # "word: ref; ref; ref" -> "word:" (semicolons removed, colon kept)
+        assert remove_references("mint a növekvő fű: Jób 14,1-2; Ézs 40,6-7; 1Pt 1,24") == "mint a növekvő fű:"
+        # Single ref with following text: ref removed, colon and rest kept
+        assert remove_references("text: ApCsel 2,25 end") == "text: end"
 
 
 class TestGetFirstLetters:
@@ -193,12 +211,60 @@ class TestGetFirstLetters:
         assert "A Ú r h, m a sz." in result
         assert ", 9 A Ú r h" not in result
 
+    def test_selah_szela_removed_no_debris(self):
+        # (Szela.) / (Sz.) are liturgical pause markers, not part of the psalm; must be stripped.
+        # No "( Sz .)" line and no stray verse number in the next sentence.
+        text = (
+            "6 Ilyen az a nemzedék, amely hozzá folyamodik, akik Jákób Istenének orcáját keresik. (Szela.)\n"
+            "7 Emeljétek föl fejeteket, ti, kapuk, emelkedjetek föl, ti, ősi ajtók, hogy bemehessen a dicső király!"
+        )
+        result = get_first_letters(text)
+        assert "( Sz .)" not in result
+        assert "7 E f f" not in result
+        assert "E f f, t, k, e f, t, ő a, h b a d k!" in result
+
+    def test_selah_at_end_removed(self):
+        # Trailing (Szela.) or (Sz.) must not produce a separate line.
+        text = "Ki az a dicső király? A Seregek Ura, ő a dicső király! (Szela.)"
+        result = get_first_letters(text)
+        assert result.strip().endswith("k!")
+        assert "( Sz .)" not in result
+
+    def test_sz_abbrev_removed(self):
+        # (Sz.) abbreviation for Szela also removed
+        text = "First line. (Sz.) 2 Second line."
+        result = get_first_letters(text)
+        assert "( Sz .)" not in result
+        assert "S l." in result
+
+    def test_quotation_marks_spacing(self):
+        # Hungarian „ and ": space after : before „; no space after „; no space before "; space after " before next word
+        text = "A karmesternek: „A szőlőtaposók” kezdetű ének dallamára."
+        result = get_first_letters(text)
+        expected = "A k: \u201eA sz\u201d k é d."
+        assert result == expected
+
+    def test_ref_list_after_colon_then_verse_then_continuation_no_debris(self):
+        # Psalm-90 style: "fű: Jób 14,1-2; Ézs 40,6-7; 1Pt 1,24" then "6 reggel..." in same sentence.
+        # Output must have colon after f, no ":;;", no stray "6".
+        text = (
+            "5 Elragadod őket, olyanok lesznek, mint reggelre az álom, mint a növekvő fű: Jób 14,1-2; Ézs 40,6-7; 1Pt 1,24\n"
+            "6 reggel virágzik és növekszik, estére megfonnyad és elszárad."
+        )
+        result = get_first_letters(text)
+        assert "m a n f: r v é n, e m é e." in result
+        assert ":;;" not in result
+        assert "f 6 r" not in result and "f6 r" not in result
+
 
 class TestMainIntegration:
     """Integration tests running the script via subprocess."""
 
-    def test_script_with_text_argument(self, tmp_path):
+    def test_script_with_text_argument(self, tmp_path=None):
         import subprocess
+        if tmp_path is None:
+            import tempfile
+            tmp_path = Path(tempfile.mkdtemp())
         project_root = Path(__file__).resolve().parent.parent
         result = subprocess.run(
             [sys.executable, "create_summary.py", "In the beginning.", "-o", "test_out"],
@@ -232,3 +298,25 @@ class TestMainIntegration:
             assert out_file.read_text() == "F G s l t w.\n"
         finally:
             passage_file.unlink(missing_ok=True)
+
+
+if __name__ == "__main__":
+    if pytest is not None:
+        pytest.main([__file__, "-v"])
+    else:
+        import unittest
+        # Test classes are pytest-style (no TestCase); run test_* methods manually
+        failed = []
+        for name in dir():
+            obj = globals().get(name)
+            if isinstance(obj, type) and name.startswith("Test"):
+                inst = obj()
+                for mname in dir(inst):
+                    if mname.startswith("test_") and callable(getattr(inst, mname)):
+                        try:
+                            getattr(inst, mname)()
+                            print(f"OK {name}.{mname}")
+                        except Exception as e:
+                            print(f"FAIL {name}.{mname}: {e}")
+                            failed.append((name, mname))
+        sys.exit(1 if failed else 0)
